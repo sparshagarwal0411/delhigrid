@@ -1,13 +1,12 @@
 /**
- * Gemini API for complaint analysis and location→ward resolution.
- * Uses REST API - no SDK required. Add VITE_GEMINI_API_KEY to .env
+ * Gemini API for complaint analysis.
+ * Gemini handles category, suggestion, AND ward from location.
  */
 
 import { wards } from "@/data/wards";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-// Try 1.5-flash first (higher free quota); fallback to 2.0-flash
-const GEMINI_MODELS = ["gemini-2.5-flash"] as const;
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"] as const;
 
 export type ComplaintCategory =
   | "air"
@@ -33,14 +32,11 @@ const CATEGORIES: ComplaintCategory[] = [
   "land",
 ];
 
-// Compact ward list for Gemini: "id: name (zone)" - Delhi has 250 wards
-const WARDS_LIST = wards
-  .map((w) => `${w.id}: ${w.name} (${w.zone})`)
-  .join("\n");
+// Compact area→ward_id for Gemini. Delhi areas map to ward 1-50.
+const WARD_MAP = "Rohini=45, Dwarka=12, Connaught Place=41, CP=41, Karol Bagh=7, Lajpat Nagar=21, Mayur Vihar=26, Vasant Kunj=16, Janakpuri=11, Pitampura=44, Shalimar Bagh=46, Greater Kailash=19, GK=19, Defence Colony=20, Chandni Chowk=36, Civil Lines=6, Narela=1, Model Town=4, Okhla=22, Mehrauli=17, Dilshad Garden=33, Preet Vihar=27, Najafgarh=13, Palam=14, Badarpur=24, Sarita Vihar=25, Rajouri Garden=8, India Gate=42, Lodhi Colony=43, Wazirpur=47, Ashok Vihar=48, Mangolpuri=49, Sultanpuri=50, Seelampur=34, Daryaganj=37, Paharganj=38, RK Puram=39, Sarojini Nagar=40";
 
 /**
- * Analyze complaint text and optional image using Gemini.
- * Returns category, suggestion, and resolved ward from location.
+ * Analyze complaint - Gemini does category, suggestion, and ward from location.
  */
 export async function analyzeComplaint(
   description: string,
@@ -64,28 +60,29 @@ export async function analyzeComplaint(
     });
   }
 
-  const locationHint = locationText?.trim()
-    ? `\n\nLocation entered by user: "${locationText.trim()}" - Use this to pick the Delhi ward (1-250) where the complaint is. Match landmarks, areas, sectors (e.g. Rohini, Dwarka, Connaught Place) to the ward list.`
+  const locationLine = locationText?.trim()
+    ? `\nLocation: ${locationText.trim()} - Use this to pick the correct Delhi ward.`
     : fallbackWardId
-      ? `\n\nNo specific location given. Use ward ${fallbackWardId} (user's ward) as the complaint location.`
-      : `\n\nNo location given. Pick the most likely ward from context, or default to ward 1 if unclear.`;
+      ? `\nNo location given - use ward_id ${fallbackWardId}.`
+      : "\nNo location - use ward_id 1.";
 
   parts.push({
-    text: `You are an environmental complaint analyzer for Delhi. Delhi has 250 wards. Analyze the complaint and location, then respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text). IMPORTANT: In the suggestion field, use single quotes for any quoted phrases inside the text - do NOT use double quotes. This ensures valid JSON.
+    text: `You are an environmental complaint advisor for Delhi. Analyze the complaint and location, then respond.
 
-{"category": "<one of: ${CATEGORIES.join(", ")}>", "suggestion": "<helpful suggestion - what to do, who to contact. 1-3 sentences. Use single quotes for any quoted words.>", "ward_id": <number 1-250>, "ward_name": "<exact name from list>"}
+Respond with ONLY valid JSON (no markdown, no code blocks). Use single quotes inside strings if needed.
 
-DELHI WARDS (id: name (zone)):
-${WARDS_LIST}
+Format: {"category": "air|water|noise|transport|soil|land", "suggestion": "Your specific suggestion", "ward_id": <number>}
+
+DELHI AREA TO WARD MAP (pick ward_id from the area that matches the location):
+${WARD_MAP}
 
 RULES:
-- category: exactly one of ${CATEGORIES.join(", ")}
-- air: pollution, smoke, dust, fumes | water: drainage, sewage | noise: loud sounds, construction | transport: traffic, roads | soil: waste dumping | land: encroachment, illegal construction
-- ward_id: integer 1-250 from the list. Match location/area to the correct Delhi ward.
-- ward_name: exact "name" from the list for that ward_id
-${locationHint}
+- category: air|water|noise|transport|soil|land (air=pollution/smoke, water=drainage/sewage, noise=construction/honking, transport=traffic/roads, soil=waste dumping, land=encroachment)
+- suggestion: SPECIFIC advice - helplines (MCD 155304, DPCC), actions (visit ward office, edmc.gov.in), contacts. NOT generic. 2-4 sentences.
+- ward_id: Match location to area in the map. Rohini/rohini sector X -> 45, Dwarka -> 12, Connaught Place/CP -> 41, Karol Bagh -> 7, Lajpat Nagar -> 21. If no match use ${fallbackWardId || 1}.
+${locationLine}
 
-Complaint from citizen:
+Complaint:
 ${description}`,
   });
 
@@ -100,8 +97,8 @@ ${description}`,
         body: JSON.stringify({
           contents: [{ parts }],
           generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 512,
+            temperature: 0.4,
+            maxOutputTokens: 1024,
             responseMimeType: "application/json",
           },
         }),
@@ -134,54 +131,45 @@ ${description}`,
         continue;
       }
 
-      // Robust JSON extraction: strip markdown fences, fix common issues
-      let jsonStr = text
+      // Robust JSON extraction
+      const jsonStr = text
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```\s*$/, "")
         .trim();
-      // Fix unterminated strings: if suggestion has unescaped quotes, wrap in try/catch and try regex fallback
-      let parsed: { category?: string; suggestion?: string; ward_id?: number; ward_name?: string };
+
+      let category: string;
+      let suggestion: string;
+      let wardId: number;
+
       try {
-        parsed = JSON.parse(jsonStr) as typeof parsed;
+        const parsed = JSON.parse(jsonStr) as { category?: string; suggestion?: string; ward_id?: number };
+        category = parsed.category?.toLowerCase() || "land";
+        suggestion = parsed.suggestion?.trim() || "";
+        wardId = Math.min(250, Math.max(1, Number(parsed.ward_id) || fallbackWardId || 1));
       } catch {
-        // Fallback: extract fields with regex
         const catMatch = jsonStr.match(/"category"\s*:\s*"([^"]+)"/);
-        const sugMatch = jsonStr.match(/"suggestion"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-        const wardIdMatch = jsonStr.match(/"ward_id"\s*:\s*(\d+)/);
-        const wardNameMatch = jsonStr.match(/"ward_name"\s*:\s*"([^"]*)"/);
-        parsed = {
-          category: catMatch?.[1] || "land",
-          suggestion: sugMatch?.[1]?.replace(/\\(.)/g, "$1") || "Thank you for reporting. Our team will look into this.",
-          ward_id: wardIdMatch ? parseInt(wardIdMatch[1], 10) : fallbackWardId || 1,
-          ward_name: wardNameMatch?.[1] || "",
-        };
+        const sugMatch = jsonStr.match(/"suggestion"\s*:\s*"([\s\S]*?)"\s*[,}]/);
+        const wardMatch = jsonStr.match(/"ward_id"\s*:\s*(\d+)/);
+        category = catMatch?.[1]?.toLowerCase() || "land";
+        suggestion = (sugMatch?.[1] || "").replace(/\\(.)/g, "$1").trim();
+        wardId = wardMatch ? Math.min(250, Math.max(1, parseInt(wardMatch[1], 10))) : (fallbackWardId || 1);
       }
 
-      const parsedTyped = parsed as {
-        category?: string;
-        suggestion?: string;
-        ward_id?: number;
-        ward_name?: string;
-      };
-      const category = parsedTyped.category?.toLowerCase();
       const validCategory = CATEGORIES.includes(category as ComplaintCategory)
         ? (category as ComplaintCategory)
         : "land";
 
-      let wardId = Math.min(250, Math.max(1, Number(parsedTyped.ward_id) || fallbackWardId || 1));
-      let wardName = parsedTyped.ward_name || "";
-      const matchedWard = wards.find((w) => w.id === wardId);
-      if (matchedWard) wardName = matchedWard.name;
-      else if (fallbackWardId) {
-        wardId = fallbackWardId;
-        wardName = wards.find((w) => w.id === fallbackWardId)?.name || `Ward ${fallbackWardId}`;
+      if (!suggestion || suggestion.length < 10) {
+        lastError = new Error("AI did not return a proper suggestion. Please try again.");
+        continue;
       }
+
+      const ward = wards.find((w) => w.id === wardId);
+      const wardName = ward?.name || `Ward ${wardId}`;
 
       return {
         category: validCategory,
-        suggestion:
-          parsedTyped.suggestion ||
-          "Thank you for reporting. Our team will look into this.",
+        suggestion,
         wardId,
         wardName,
       };
