@@ -128,6 +128,44 @@ export type Database = {
           verified_by?: string | null
         }
       }
+      complaints: {
+        Row: {
+          id: string
+          user_id: string
+          ward_number: number
+          description: string
+          photo_url: string | null
+          category: 'air' | 'water' | 'noise' | 'transport' | 'soil' | 'land'
+          ai_suggestion: string | null
+          status: 'pending' | 'in_progress' | 'resolved'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ward_number: number
+          description: string
+          photo_url?: string | null
+          category: 'air' | 'water' | 'noise' | 'transport' | 'soil' | 'land'
+          ai_suggestion?: string | null
+          status?: 'pending' | 'in_progress' | 'resolved'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ward_number?: number
+          description?: string
+          photo_url?: string | null
+          category?: 'air' | 'water' | 'noise' | 'transport' | 'soil' | 'land'
+          ai_suggestion?: string | null
+          status?: 'pending' | 'in_progress' | 'resolved'
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

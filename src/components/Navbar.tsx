@@ -11,7 +11,8 @@ import {
   LogIn,
   LogOut,
   IndianRupee,
-  ShoppingBag
+  ShoppingBag,
+  FileWarning
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,10 +143,15 @@ export function Navbar() {
     ? { to: "/marketplace", label: "Marketplace", icon: ShoppingBag }
     : null;
 
+  const complaintsLink = isAuthenticated && userRole === "citizen"
+    ? { to: "/complaints", label: "Complaints", icon: FileWarning }
+    : null;
+
   const navLinks = [
     ...baseNavLinks,
     ...(dashboardLink ? [dashboardLink] : []),
     ...(marketplaceLink ? [marketplaceLink] : []),
+    ...(complaintsLink ? [complaintsLink] : []),
   ];
 
   return (

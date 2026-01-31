@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,8 @@ import {
   MessageSquare,
   Car,
   AlertTriangle,
-  Info
+  Info,
+  FileWarning
 } from "lucide-react";
 
 import {
@@ -1130,6 +1131,21 @@ const CitizenDashboard = () => {
 
           {/* Reorganized Sidebar */}
           <div className="space-y-6">
+            {/* Complaints Quick Link */}
+            <Link to="/complaints">
+              <Card className="cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors border-2 border-dashed">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                    <FileWarning className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">File a Complaint</div>
+                    <div className="text-xs text-muted-foreground">Report issues with AI assistance</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
             {/* Achievement Card */}
             <Card variant="civic">
               <CardHeader>

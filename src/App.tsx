@@ -17,6 +17,7 @@ import NGOPage from "./pages/NGOPage";
 import PartnershipPage from "./pages/PartnershipPage";
 import PaymentPage from "./pages/PaymentPage";
 import Marketplace from "./pages/Marketplace";
+import ComplaintsPage from "./pages/ComplaintsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/partnership" element={<PartnershipPage />} />
             <Route path="/payment" element={<PaymentPage />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/complaints" element={<ComplaintsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
