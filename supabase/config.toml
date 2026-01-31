@@ -1,0 +1,5 @@
+project_id = "pauyfhykkxfgqftxjmyg"
+
+[functions.fetch-pollution-data]
+verify_jwt = false
+# Allow unauthenticated access (anon key is still required in header)
