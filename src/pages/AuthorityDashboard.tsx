@@ -1017,127 +1017,216 @@ const AuthorityDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {loadingComplaints ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                    <p className="text-muted-foreground">Loading complaints...</p>
+                <Tabs defaultValue="active" className="w-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <TabsList>
+                      <TabsTrigger value="active">Active Issues</TabsTrigger>
+                      <TabsTrigger value="closed">Closed / Solved</TabsTrigger>
+                    </TabsList>
                   </div>
-                ) : complaints.length > 0 ? (
-                  <div className="grid gap-6">
-                    {complaints.map((comp) => (
-                      <Card key={comp.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all">
-                        <div className="flex flex-col md:flex-row">
-                          {comp.photo_url && (
-                            <div className="md:w-64 h-48 md:h-auto bg-muted">
-                              <img
-                                src={comp.photo_url}
-                                alt="Complaint"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <div className="flex-1 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline">{comp.category}</Badge>
-                                <Badge variant="secondary" className="gap-1">
-                                  <MapPin className="h-3 w-3" />
-                                  Ward {comp.ward_number}
-                                </Badge>
-                                <Badge className={
-                                  comp.status === 'solved' ? "bg-success" :
-                                    comp.status === 'working' ? "bg-warning" :
-                                      comp.status === 'reported' ? "bg-info" : "bg-primary"
-                                }>
-                                  {comp.status.toUpperCase()}
-                                </Badge>
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(comp.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
 
-                            <h4 className="font-bold text-lg mb-2 capitalize">{comp.category} Issue</h4>
-                            <p className="text-sm text-muted-foreground mb-4">{comp.description}</p>
+                  <TabsContent value="active" className="mt-0">
+                    {loadingComplaints ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                        <p className="text-muted-foreground">Loading complaints...</p>
+                      </div>
+                    ) : complaints.filter(c => c.status !== 'solved').length > 0 ? (
+                      <div className="grid gap-6">
+                        {complaints.filter(c => c.status !== 'solved').map((comp) => (
+                          <Card key={comp.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all">
+                            <div className="flex flex-col md:flex-row">
+                              {comp.photo_url && (
+                                <div className="md:w-64 h-48 md:h-auto bg-muted">
+                                  <img
+                                    src={comp.photo_url}
+                                    alt="Complaint"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline">{comp.category}</Badge>
+                                    <Badge variant="secondary" className="gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      Ward {comp.ward_number}
+                                    </Badge>
+                                    <Badge className={
+                                      comp.status === 'solved' ? "bg-success" :
+                                        comp.status === 'working' ? "bg-warning" :
+                                          comp.status === 'reported' ? "bg-info" : "bg-primary"
+                                    }>
+                                      {comp.status.toUpperCase()}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(comp.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
 
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-                              <Users className="h-3 w-3" />
-                              By {comp.users ? `${comp.users.first_name} ${comp.users.last_name}` : `User ${comp.user_id.substring(0, 8)}`}
-                            </div>
+                                <h4 className="font-bold text-lg mb-2 capitalize">{comp.category} Issue</h4>
+                                <p className="text-sm text-muted-foreground mb-4">{comp.description}</p>
 
-                            <div className="grid md:grid-cols-2 gap-6 items-end pt-4 border-t">
-                              <div className="space-y-3">
-                                <Label className="text-sm font-medium">Internal Feedback / Notes</Label>
-                                <textarea
-                                  className="w-full min-h-[80px] p-3 rounded-md border text-sm bg-background resize-none"
-                                  placeholder="Provide feedback to the citizen..."
-                                  value={complaintFeedback[comp.id] || ""}
-                                  onChange={(e) => setComplaintFeedback({
-                                    ...complaintFeedback,
-                                    [comp.id]: e.target.value
-                                  })}
-                                />
-                              </div>
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between gap-4">
-                                  <div className="flex-1 space-y-1.5">
-                                    <Label className="text-xs">Reward Points</Label>
-                                    <Input
-                                      type="number"
-                                      className="h-9"
-                                      value={complaintPoints[comp.id] || 0}
-                                      onChange={(e) => setComplaintPoints({
-                                        ...complaintPoints,
-                                        [comp.id]: parseInt(e.target.value) || 0
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                                  <Users className="h-3 w-3" />
+                                  By {comp.users ? `${comp.users.first_name} ${comp.users.last_name}` : `User ${comp.user_id.substring(0, 8)}`}
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-6 items-end pt-4 border-t">
+                                  <div className="space-y-3">
+                                    <Label className="text-sm font-medium">Internal Feedback / Notes</Label>
+                                    <textarea
+                                      className="w-full min-h-[80px] p-3 rounded-md border text-sm bg-background resize-none"
+                                      placeholder="Provide feedback to the citizen..."
+                                      value={complaintFeedback[comp.id] || ""}
+                                      onChange={(e) => setComplaintFeedback({
+                                        ...complaintFeedback,
+                                        [comp.id]: e.target.value
                                       })}
                                     />
                                   </div>
-                                  <div className="flex-1 space-y-1.5">
-                                    <Label className="text-xs">Update Status</Label>
-                                    <Select
-                                      value={comp.status}
-                                      onValueChange={(val) => handleUpdateComplaint(comp.id, val)}
+                                  <div className="space-y-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                      <div className="flex-1 space-y-1.5">
+                                        <Label className="text-xs">Reward Points</Label>
+                                        <Input
+                                          type="number"
+                                          className="h-9"
+                                          value={complaintPoints[comp.id] || 0}
+                                          onChange={(e) => setComplaintPoints({
+                                            ...complaintPoints,
+                                            [comp.id]: parseInt(e.target.value) || 0
+                                          })}
+                                        />
+                                      </div>
+                                      <div className="flex-1 space-y-1.5">
+                                        <Label className="text-xs">Update Status</Label>
+                                        <Select
+                                          value={comp.status}
+                                          onValueChange={(val) => handleUpdateComplaint(comp.id, val)}
+                                        >
+                                          <SelectTrigger className="h-9">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="received">Received</SelectItem>
+                                            <SelectItem value="reported">Reported</SelectItem>
+                                            <SelectItem value="working">Working</SelectItem>
+                                            <SelectItem value="solved">Solved</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      className="w-full gap-2"
+                                      variant="outline"
+                                      onClick={() => handleUpdateComplaint(comp.id, comp.status)}
                                     >
-                                      <SelectTrigger className="h-9">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="received">Received</SelectItem>
-                                        <SelectItem value="reported">Reported</SelectItem>
-                                        <SelectItem value="working">Working</SelectItem>
-                                        <SelectItem value="solved">Solved</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                      <FileText className="h-4 w-4" />
+                                      Save Feedback & Points
+                                    </Button>
                                   </div>
                                 </div>
-                                <Button
-                                  className="w-full gap-2"
-                                  variant="outline"
-                                  onClick={() => handleUpdateComplaint(comp.id, comp.status)}
-                                >
-                                  <FileText className="h-4 w-4" />
-                                  Save Feedback & Points
-                                </Button>
+
+                                {/* Timeline preview */}
+                                <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t border-dashed">
+                                  <Clock className="h-3 w-3" />
+                                  History: {comp.timeline?.length || 0} status changes recorded
+                                </div>
                               </div>
                             </div>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-20 border-2 border-dashed rounded-xl">
+                        <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold mb-1">No Active Issues</h3>
+                        <p className="text-muted-foreground">All complaints have been resolved!</p>
+                      </div>
+                    )}
+                  </TabsContent>
 
-                            {/* Timeline preview */}
-                            <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t border-dashed">
-                              <Clock className="h-3 w-3" />
-                              History: {comp.timeline?.length || 0} status changes recorded
+                  <TabsContent value="closed" className="mt-0">
+                    {loadingComplaints ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                        <p className="text-muted-foreground">Loading history...</p>
+                      </div>
+                    ) : complaints.filter(c => c.status === 'solved').length > 0 ? (
+                      <div className="grid gap-6">
+                        {complaints.filter(c => c.status === 'solved').map((comp) => (
+                          <Card key={comp.id} className="overflow-hidden border hover:border-success/30 transition-all opacity-90 hover:opacity-100">
+                            <div className="flex flex-col md:flex-row">
+                              {comp.photo_url && (
+                                <div className="md:w-64 h-48 md:h-auto bg-muted grayscale">
+                                  <img
+                                    src={comp.photo_url}
+                                    alt="Complaint"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 p-6 bg-muted/10">
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline">{comp.category}</Badge>
+                                    <Badge variant="secondary" className="gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      Ward {comp.ward_number}
+                                    </Badge>
+                                    <Badge className="bg-success text-success-foreground gap-1">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      SOLVED
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(comp.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+
+                                <h4 className="font-bold text-lg mb-2 capitalize text-muted-foreground strike-through decoration-muted-foreground">{comp.category} Issue</h4>
+                                <p className="text-sm text-muted-foreground mb-4 line-through decoration-muted-foreground/50">{comp.description}</p>
+
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                                  <Users className="h-3 w-3" />
+                                  By {comp.users ? `${comp.users.first_name} ${comp.users.last_name}` : `User ${comp.user_id.substring(0, 8)}`}
+                                </div>
+
+                                {comp.admin_feedback && (
+                                  <div className="p-4 bg-muted/50 rounded-lg border text-sm">
+                                    <div className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-1">Resolution Notes</div>
+                                    {comp.admin_feedback}
+                                  </div>
+                                )}
+
+                                {/* Re-open option */}
+                                <div className="flex justify-end mt-4">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs text-muted-foreground hover:text-primary"
+                                    onClick={() => handleUpdateComplaint(comp.id, 'working')}
+                                  >
+                                    Re-open Case
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-20 border-2 border-dashed rounded-xl">
-                    <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-1">No Complaints</h3>
-                    <p className="text-muted-foreground">No complaints have been reported yet.</p>
-                  </div>
-                )}
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-20 border-2 border-dashed rounded-xl">
+                        <CheckCircle2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold mb-1">No Solved Complaints</h3>
+                        <p className="text-muted-foreground">Start by marking active issues as solved.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>

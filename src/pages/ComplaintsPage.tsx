@@ -597,74 +597,131 @@ const ComplaintsPage = () => {
                     </TabsList>
                   </div>
 
-                  <TabsContent value="my" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
-                    {loadingComplaints ? (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                        <p className="text-muted-foreground">Loading history...</p>
+                  <TabsContent value="my" className="flex-1 flex flex-col m-0 overflow-hidden">
+                    <Tabs defaultValue="active" className="flex-1 flex flex-col">
+                      <div className="px-4 py-2 border-b">
+                        <TabsList className="grid w-full grid-cols-2 h-8">
+                          <TabsTrigger value="active" className="text-xs">Active Issues</TabsTrigger>
+                          <TabsTrigger value="closed" className="text-xs">Past Reports</TabsTrigger>
+                        </TabsList>
                       </div>
-                    ) : userComplaints.length > 0 ? (
-                      userComplaints.map((comp) => {
-                        const stages = ['received', 'reported', 'working', 'solved'];
-                        const currentIndex = stages.indexOf(comp.status);
 
-                        return (
-                          <Card key={comp.id} className="overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <Badge variant="outline" className="capitalize mb-1">{comp.category}</Badge>
-                                  <p className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</p>
-                                </div>
-                                {comp.points_rewarded > 0 && (
-                                  <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    +{comp.points_rewarded} Pts
-                                  </Badge>
-                                )}
-                              </div>
+                      <TabsContent value="active" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
+                        {loadingComplaints ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                            <p className="text-muted-foreground">Loading history...</p>
+                          </div>
+                        ) : userComplaints.filter(c => c.status !== 'solved').length > 0 ? (
+                          userComplaints.filter(c => c.status !== 'solved').map((comp) => {
+                            const stages = ['received', 'reported', 'working', 'solved'];
+                            const currentIndex = stages.indexOf(comp.status);
 
-                              <p className="text-sm font-medium line-clamp-2 mb-4">{comp.description}</p>
-
-                              {/* Progress Timeline */}
-                              <div className="relative mb-4 px-2">
-                                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2" />
-                                <div
-                                  className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 transition-all duration-500"
-                                  style={{ width: `${Math.max(0, currentIndex) / (stages.length - 1) * 100}%` }}
-                                />
-                                <div className="relative flex justify-between">
-                                  {stages.map((stage, idx) => (
-                                    <div key={stage} className="flex flex-col items-center group">
-                                      <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 transition-colors ${idx <= currentIndex ? "bg-primary border-primary" : "bg-background border-muted"
-                                        }`} />
-                                      <span className={`absolute -bottom-5 text-[9px] font-bold uppercase tracking-tighter transition-colors ${idx <= currentIndex ? "text-primary" : "text-muted-foreground"
-                                        }`}>
-                                        {stage.slice(0, 3)}
-                                      </span>
+                            return (
+                              <Card key={comp.id} className="overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all">
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div>
+                                      <Badge variant="outline" className="capitalize mb-1">{comp.category}</Badge>
+                                      <p className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</p>
                                     </div>
-                                  ))}
-                                </div>
-                              </div>
+                                    {comp.points_rewarded > 0 && (
+                                      <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        +{comp.points_rewarded} Pts
+                                      </Badge>
+                                    )}
+                                  </div>
 
-                              {comp.admin_feedback && (
-                                <div className="mt-6 p-3 bg-muted/50 rounded-lg text-xs">
-                                  <span className="font-semibold block mb-1">Feedback:</span>
-                                  <span className="text-muted-foreground">{comp.admin_feedback}</span>
+                                  <p className="text-sm font-medium line-clamp-2 mb-4">{comp.description}</p>
+
+                                  {/* Progress Timeline */}
+                                  <div className="relative mb-4 px-2">
+                                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2" />
+                                    <div
+                                      className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 transition-all duration-500"
+                                      style={{ width: `${Math.max(0, currentIndex) / (stages.length - 1) * 100}%` }}
+                                    />
+                                    <div className="relative flex justify-between">
+                                      {stages.map((stage, idx) => (
+                                        <div key={stage} className="flex flex-col items-center group">
+                                          <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 transition-colors ${idx <= currentIndex ? "bg-primary border-primary" : "bg-background border-muted"
+                                            }`} />
+                                          <span className={`absolute -bottom-5 text-[9px] font-bold uppercase tracking-tighter transition-colors ${idx <= currentIndex ? "text-primary" : "text-muted-foreground"
+                                            }`}>
+                                            {stage.slice(0, 3)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {comp.admin_feedback && (
+                                    <div className="mt-6 p-3 bg-muted/50 rounded-lg text-xs">
+                                      <span className="font-semibold block mb-1">Feedback:</span>
+                                      <span className="text-muted-foreground">{comp.admin_feedback}</span>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            );
+                          })
+                        ) : (
+                          <div className="text-center py-12">
+                            <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Wind className="h-8 w-8 text-muted-foreground/50" />
+                            </div>
+                            <p className="text-muted-foreground">No active complaints.</p>
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="closed" className="flex-1 overflow-y-auto p-4 space-y-4 m-0 bg-muted/5">
+                        {loadingComplaints ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                            <p className="text-muted-foreground">Loading history...</p>
+                          </div>
+                        ) : userComplaints.filter(c => c.status === 'solved').length > 0 ? (
+                          userComplaints.filter(c => c.status === 'solved').map((comp) => (
+                            <Card key={comp.id} className="overflow-hidden border border-success/20 shadow-sm opacity-90 hover:opacity-100 transition-all">
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div>
+                                    <Badge variant="outline" className="capitalize mb-1">{comp.category}</Badge>
+                                    <p className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                  <Badge className="bg-success text-success-foreground gap-1">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    SOLVED
+                                  </Badge>
                                 </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Wind className="h-8 w-8 text-muted-foreground/50" />
-                        </div>
-                        <p className="text-muted-foreground">No complaints filed yet.</p>
-                      </div>
-                    )}
+
+                                <p className="text-sm text-muted-foreground line-through decoration-muted-foreground/30 mb-4">{comp.description}</p>
+
+                                {comp.admin_feedback && (
+                                  <div className="mt-2 p-3 bg-muted/50 rounded-lg text-xs border">
+                                    <span className="font-semibold block mb-1 text-primary">Resolution:</span>
+                                    <span className="text-muted-foreground">{comp.admin_feedback}</span>
+                                  </div>
+                                )}
+
+                                {comp.points_rewarded > 0 && (
+                                  <div className="mt-2 flex items-center justify-end text-xs text-success font-medium">
+                                    Earned +{comp.points_rewarded} Points
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="text-center py-12">
+                            <CheckCircle2 className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                            <p className="text-muted-foreground">No solved complaints yet.</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
                   </TabsContent>
 
                   <TabsContent value="community" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
