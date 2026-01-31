@@ -71,9 +71,9 @@ export async function analyzeComplaint(
       : `\n\nNo location given. Pick the most likely ward from context, or default to ward 1 if unclear.`;
 
   parts.push({
-    text: `You are an environmental complaint analyzer for Delhi. Delhi has 250 wards. Analyze the complaint and location, then respond with ONLY a valid JSON object (no markdown, no extra text):
+    text: `You are an environmental complaint analyzer for Delhi. Delhi has 250 wards. Analyze the complaint and location, then respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text). IMPORTANT: In the suggestion field, use single quotes for any quoted phrases inside the text - do NOT use double quotes. This ensures valid JSON.
 
-{"category": "<one of: ${CATEGORIES.join(", ")}>", "suggestion": "<helpful suggestion - what to do, who to contact. 1-3 sentences>", "ward_id": <number 1-250>, "ward_name": "<exact name from list>"}
+{"category": "<one of: ${CATEGORIES.join(", ")}>", "suggestion": "<helpful suggestion - what to do, who to contact. 1-3 sentences. Use single quotes for any quoted words.>", "ward_id": <number 1-250>, "ward_name": "<exact name from list>"}
 
 DELHI WARDS (id: name (zone)):
 ${WARDS_LIST}
@@ -127,26 +127,49 @@ ${description}`,
       }
 
       const data = await res.json();
-      const text =
+      let text =
         data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (!text) {
         lastError = new Error("No response from Gemini");
         continue;
       }
 
-      const parsed = JSON.parse(text) as {
+      // Robust JSON extraction: strip markdown fences, fix common issues
+      let jsonStr = text
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/, "")
+        .trim();
+      // Fix unterminated strings: if suggestion has unescaped quotes, wrap in try/catch and try regex fallback
+      let parsed: { category?: string; suggestion?: string; ward_id?: number; ward_name?: string };
+      try {
+        parsed = JSON.parse(jsonStr) as typeof parsed;
+      } catch {
+        // Fallback: extract fields with regex
+        const catMatch = jsonStr.match(/"category"\s*:\s*"([^"]+)"/);
+        const sugMatch = jsonStr.match(/"suggestion"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        const wardIdMatch = jsonStr.match(/"ward_id"\s*:\s*(\d+)/);
+        const wardNameMatch = jsonStr.match(/"ward_name"\s*:\s*"([^"]*)"/);
+        parsed = {
+          category: catMatch?.[1] || "land",
+          suggestion: sugMatch?.[1]?.replace(/\\(.)/g, "$1") || "Thank you for reporting. Our team will look into this.",
+          ward_id: wardIdMatch ? parseInt(wardIdMatch[1], 10) : fallbackWardId || 1,
+          ward_name: wardNameMatch?.[1] || "",
+        };
+      }
+
+      const parsedTyped = parsed as {
         category?: string;
         suggestion?: string;
         ward_id?: number;
         ward_name?: string;
       };
-      const category = parsed.category?.toLowerCase();
+      const category = parsedTyped.category?.toLowerCase();
       const validCategory = CATEGORIES.includes(category as ComplaintCategory)
         ? (category as ComplaintCategory)
         : "land";
 
-      let wardId = Math.min(250, Math.max(1, Number(parsed.ward_id) || fallbackWardId || 1));
-      let wardName = parsed.ward_name || "";
+      let wardId = Math.min(250, Math.max(1, Number(parsedTyped.ward_id) || fallbackWardId || 1));
+      let wardName = parsedTyped.ward_name || "";
       const matchedWard = wards.find((w) => w.id === wardId);
       if (matchedWard) wardName = matchedWard.name;
       else if (fallbackWardId) {
@@ -157,7 +180,7 @@ ${description}`,
       return {
         category: validCategory,
         suggestion:
-          parsed.suggestion ||
+          parsedTyped.suggestion ||
           "Thank you for reporting. Our team will look into this.",
         wardId,
         wardName,
