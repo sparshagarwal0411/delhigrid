@@ -531,7 +531,7 @@ const ComplaintsPage = () => {
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.5 }}
-        className="fixed bottom-6 right-6 z-40"
+        className="fixed bottom-6 left-6 z-50"
       >
         <Button
           onClick={() => setSidebarOpen(true)}
@@ -540,9 +540,6 @@ const ComplaintsPage = () => {
         >
           <Sparkles className="h-6 w-6" />
         </Button>
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold text-muted-foreground whitespace-nowrap">
-          My Complaints
-        </div>
       </motion.div>
 
       {/* Complaints Tracker Sidebar */}
@@ -559,11 +556,11 @@ const ComplaintsPage = () => {
             />
             {/* Sidebar Drawer */}
             <motion.div
-              initial={{ x: "100%" }}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
+              exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 z-50 w-full sm:w-[400px] bg-background border-l shadow-2xl flex flex-col"
+              className="fixed inset-y-0 left-0 z-50 w-full sm:w-[400px] bg-background border-r shadow-2xl flex flex-col"
             >
               <div className="p-4 border-b flex items-center justify-between bg-muted/30">
                 <div className="flex items-center gap-2">
