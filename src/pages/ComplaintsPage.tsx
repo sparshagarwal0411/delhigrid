@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Droplets,
   Volume2,
@@ -85,6 +86,7 @@ const ComplaintsPage = () => {
   // Sidebar State
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userComplaints, setUserComplaints] = useState<any[]>([]);
+  const [communityComplaints, setCommunityComplaints] = useState<any[]>([]);
   const [loadingComplaints, setLoadingComplaints] = useState(false);
 
   const { toast } = useToast();
@@ -260,6 +262,18 @@ const ComplaintsPage = () => {
         setUserComplaints(complaints);
       }
       setLoadingComplaints(false);
+
+      // Fetch community complaints
+      const { data: commComplaints } = await supabase
+        .from("complaints")
+        .select("*")
+        // .eq("ward_number", profile.ward_number) // Optional: filter by ward
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (commComplaints) {
+        setCommunityComplaints(commComplaints);
+      }
     };
 
     init();
@@ -567,81 +581,128 @@ const ComplaintsPage = () => {
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <ClipboardList className="h-4 w-4 text-primary" />
                   </div>
-                  <h2 className="font-semibold text-lg">My Complaints</h2>
+                  <h2 className="font-semibold text-lg">Complaints</h2>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {loadingComplaints ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                    <p className="text-muted-foreground">Loading history...</p>
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <Tabs defaultValue="my" className="flex-1 flex flex-col">
+                  <div className="px-4 pt-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="my">My Complaints</TabsTrigger>
+                      <TabsTrigger value="community">Community</TabsTrigger>
+                    </TabsList>
                   </div>
-                ) : userComplaints.length > 0 ? (
-                  userComplaints.map((comp) => {
-                    const stages = ['received', 'reported', 'working', 'solved'];
-                    const currentIndex = stages.indexOf(comp.status);
 
-                    return (
-                      <Card key={comp.id} className="overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <Badge variant="outline" className="capitalize mb-1">{comp.category}</Badge>
-                              <p className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</p>
-                            </div>
-                            {comp.points_rewarded > 0 && (
-                              <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                +{comp.points_rewarded} Pts
-                              </Badge>
-                            )}
-                          </div>
+                  <TabsContent value="my" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
+                    {loadingComplaints ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                        <p className="text-muted-foreground">Loading history...</p>
+                      </div>
+                    ) : userComplaints.length > 0 ? (
+                      userComplaints.map((comp) => {
+                        const stages = ['received', 'reported', 'working', 'solved'];
+                        const currentIndex = stages.indexOf(comp.status);
 
-                          <p className="text-sm font-medium line-clamp-2 mb-4">{comp.description}</p>
-
-                          {/* Progress Timeline */}
-                          <div className="relative mb-4 px-2">
-                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2" />
-                            <div
-                              className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 transition-all duration-500"
-                              style={{ width: `${Math.max(0, currentIndex) / (stages.length - 1) * 100}%` }}
-                            />
-                            <div className="relative flex justify-between">
-                              {stages.map((stage, idx) => (
-                                <div key={stage} className="flex flex-col items-center group">
-                                  <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 transition-colors ${idx <= currentIndex ? "bg-primary border-primary" : "bg-background border-muted"
-                                    }`} />
-                                  <span className={`absolute -bottom-5 text-[9px] font-bold uppercase tracking-tighter transition-colors ${idx <= currentIndex ? "text-primary" : "text-muted-foreground"
-                                    }`}>
-                                    {stage.slice(0, 3)}
-                                  </span>
+                        return (
+                          <Card key={comp.id} className="overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <Badge variant="outline" className="capitalize mb-1">{comp.category}</Badge>
+                                  <p className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</p>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
+                                {comp.points_rewarded > 0 && (
+                                  <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    +{comp.points_rewarded} Pts
+                                  </Badge>
+                                )}
+                              </div>
 
-                          {comp.admin_feedback && (
-                            <div className="mt-6 p-3 bg-muted/50 rounded-lg text-xs">
-                              <span className="font-semibold block mb-1">Feedback:</span>
-                              <span className="text-muted-foreground">{comp.admin_feedback}</span>
+                              <p className="text-sm font-medium line-clamp-2 mb-4">{comp.description}</p>
+
+                              {/* Progress Timeline */}
+                              <div className="relative mb-4 px-2">
+                                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2" />
+                                <div
+                                  className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 transition-all duration-500"
+                                  style={{ width: `${Math.max(0, currentIndex) / (stages.length - 1) * 100}%` }}
+                                />
+                                <div className="relative flex justify-between">
+                                  {stages.map((stage, idx) => (
+                                    <div key={stage} className="flex flex-col items-center group">
+                                      <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 transition-colors ${idx <= currentIndex ? "bg-primary border-primary" : "bg-background border-muted"
+                                        }`} />
+                                      <span className={`absolute -bottom-5 text-[9px] font-bold uppercase tracking-tighter transition-colors ${idx <= currentIndex ? "text-primary" : "text-muted-foreground"
+                                        }`}>
+                                        {stage.slice(0, 3)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {comp.admin_feedback && (
+                                <div className="mt-6 p-3 bg-muted/50 rounded-lg text-xs">
+                                  <span className="font-semibold block mb-1">Feedback:</span>
+                                  <span className="text-muted-foreground">{comp.admin_feedback}</span>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Wind className="h-8 w-8 text-muted-foreground/50" />
+                        </div>
+                        <p className="text-muted-foreground">No complaints filed yet.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="community" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
+                    {loadingComplaints ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                        <p className="text-muted-foreground">Loading community reports...</p>
+                      </div>
+                    ) : communityComplaints.length > 0 ? (
+                      communityComplaints.map((comp) => (
+                        <Card key={comp.id} className="overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <Badge variant="outline" className="capitalize">{comp.category}</Badge>
+                              <Badge variant="secondary" className="gap-1">
+                                <MapPin className="h-3 w-3" />
+                                Ward {comp.ward_number}
+                              </Badge>
                             </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Wind className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                    <p className="text-muted-foreground">No complaints filed yet.</p>
-                  </div>
-                )}
+
+                            <p className="text-sm font-medium line-clamp-2 mb-3">{comp.description}</p>
+
+                            <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+                              <span className="capitalize font-semibold text-primary/80 px-2 py-0.5 bg-primary/5 rounded-full">
+                                {comp.status}
+                              </span>
+                              <span>{new Date(comp.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-muted-foreground">No community complaints found.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             </motion.div>
           </>
