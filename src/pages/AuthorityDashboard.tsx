@@ -74,6 +74,7 @@ interface Complaint {
     first_name: string;
     last_name: string;
     score: number;
+    wallet_balance: number;
   }
 }
 
@@ -359,14 +360,19 @@ const AuthorityDashboard = () => {
         const addedPoints = points - (complaint.points_rewarded || 0);
         const { data: userProfile } = await supabase
           .from("users")
-          .select("score")
+          .select("score, wallet_balance")
           .eq("id", complaint.user_id)
           .single();
 
-        const newScore = ((userProfile as any)?.score || 0) + addedPoints;
+        const currentScore = (userProfile as any)?.score || 0;
+        const currentWallet = (userProfile as any)?.wallet_balance || 0;
+
         await (supabase
           .from("users") as any)
-          .update({ score: newScore })
+          .update({
+            score: currentScore + addedPoints,
+            wallet_balance: currentWallet + addedPoints
+          })
           .eq("id", complaint.user_id);
       }
 

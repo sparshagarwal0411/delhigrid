@@ -730,7 +730,7 @@ const CitizenDashboard = () => {
 
             {/* Tabs for Content */}
             <Tabs defaultValue="goals" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="goals" className="gap-2">
                   <Target className="h-4 w-4" />
                   My Goals
@@ -743,10 +743,7 @@ const CitizenDashboard = () => {
                   <CheckCircle className="h-4 w-4" />
                   Actions
                 </TabsTrigger>
-                <TabsTrigger value="complaints" className="gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Tracker
-                </TabsTrigger>
+
               </TabsList>
 
               {/* Goals Tab */}
@@ -1002,99 +999,7 @@ const CitizenDashboard = () => {
                 </Dialog>
               </TabsContent>
 
-              {/* Complaints Tracker Tab */}
-              <TabsContent value="complaints" className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-heading text-lg font-semibold">Your Reported Issues</h3>
-                  <Link to="/complaints">
-                    <Button variant="civic-outline" size="sm" className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      New Complaint
-                    </Button>
-                  </Link>
-                </div>
 
-                {loadingComplaints ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                    <p className="text-muted-foreground">Loading your reports...</p>
-                  </div>
-                ) : userComplaints.length > 0 ? (
-                  <div className="space-y-4">
-                    {userComplaints.map((comp) => {
-                      const stages = ['received', 'reported', 'working', 'solved'];
-                      const currentIndex = stages.indexOf(comp.status);
-
-                      return (
-                        <Card key={comp.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all">
-                          <CardContent className="p-0">
-                            <div className="flex flex-col sm:flex-row">
-                              {comp.photo_url && (
-                                <div className="sm:w-48 h-32 sm:h-auto bg-muted">
-                                  <img src={comp.photo_url} alt="Problem" className="w-full h-full object-cover" />
-                                </div>
-                              )}
-                              <div className="flex-1 p-5">
-                                <div className="flex items-center justify-between mb-2">
-                                  <Badge variant="outline" className="capitalize">{comp.category}</Badge>
-                                  <span className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</span>
-                                </div>
-                                <p className="text-sm font-medium mb-3 line-clamp-2">{comp.description}</p>
-
-                                {/* Progress Timeline */}
-                                <div className="relative mt-6 mb-8 px-2">
-                                  <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2" />
-                                  <div
-                                    className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 transition-all duration-500"
-                                    style={{ width: `${Math.max(0, currentIndex) / (stages.length - 1) * 100}%` }}
-                                  />
-                                  <div className="relative flex justify-between">
-                                    {stages.map((stage, idx) => (
-                                      <div key={stage} className="flex flex-col items-center group">
-                                        <div className={`h-4 w-4 rounded-full border-2 z-10 transition-colors ${idx <= currentIndex ? "bg-primary border-primary" : "bg-background border-muted"
-                                          } ${idx === currentIndex ? "ring-4 ring-primary/20 scale-125" : ""}`} />
-                                        <span className={`absolute -bottom-6 text-[10px] font-bold uppercase tracking-tighter transition-colors ${idx <= currentIndex ? "text-primary" : "text-muted-foreground"
-                                          }`}>
-                                          {stage}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {comp.admin_feedback && (
-                                  <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <MessageSquare className="h-3 w-3 text-primary" />
-                                      <span className="text-xs font-bold text-primary">Authority Feedback</span>
-                                    </div>
-                                    <p className="text-xs italic text-muted-foreground">"{comp.admin_feedback}"</p>
-                                  </div>
-                                )}
-
-                                {comp.points_rewarded > 0 && (
-                                  <div className="mt-3 flex items-center gap-2 text-success font-bold text-xs">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Reward: +{comp.points_rewarded} points
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-muted/30 rounded-2xl border-2 border-dashed">
-                    <AlertCircle className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">You haven't reported any issues yet.</p>
-                    <Link to="/complaints">
-                      <Button variant="link" className="mt-2 text-primary">Start Reporting</Button>
-                    </Link>
-                  </div>
-                )}
-              </TabsContent>
             </Tabs>
 
             {/* Ward Comparison Section */}
@@ -1527,7 +1432,7 @@ const CitizenDashboard = () => {
         {/* Bottom Spacer/Padding */}
         <div className="h-20" />
       </div>
-    </Layout>
+    </Layout >
   );
 };
 

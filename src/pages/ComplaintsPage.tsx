@@ -30,6 +30,8 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
+  ClipboardList,
+  CheckCircle2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +81,12 @@ const ComplaintsPage = () => {
   const [reporting, setReporting] = useState(false);
   const [analysis, setAnalysis] = useState<GeminiAnalysis | null>(null);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
+
+  // Sidebar State
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userComplaints, setUserComplaints] = useState<any[]>([]);
+  const [loadingComplaints, setLoadingComplaints] = useState(false);
+
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -239,6 +247,19 @@ const ComplaintsPage = () => {
 
       setUserData(profile as unknown as UserData);
       setLoading(false);
+
+      // Fetch complaints
+      setLoadingComplaints(true);
+      const { data: complaints, error: complaintsError } = await supabase
+        .from("complaints")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      if (complaints) {
+        setUserComplaints(complaints);
+      }
+      setLoadingComplaints(false);
     };
 
     init();
@@ -504,7 +525,133 @@ const ComplaintsPage = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Floating Action Button for Tracker */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5 }}
+        className="fixed bottom-6 right-6 z-40"
+      >
+        <Button
+          onClick={() => setSidebarOpen(true)}
+          size="lg"
+          className="h-14 w-14 rounded-full shadow-xl shadow-primary/30 flex items-center justify-center p-0 hover:scale-105 transition-transform"
+        >
+          <Sparkles className="h-6 w-6" />
+        </Button>
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+          My Complaints
+        </div>
+      </motion.div>
+
+      {/* Complaints Tracker Sidebar */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+            />
+            {/* Sidebar Drawer */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 z-50 w-full sm:w-[400px] bg-background border-l shadow-2xl flex flex-col"
+            >
+              <div className="p-4 border-b flex items-center justify-between bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                  </div>
+                  <h2 className="font-semibold text-lg">My Complaints</h2>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {loadingComplaints ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <p className="text-muted-foreground">Loading history...</p>
+                  </div>
+                ) : userComplaints.length > 0 ? (
+                  userComplaints.map((comp) => {
+                    const stages = ['received', 'reported', 'working', 'solved'];
+                    const currentIndex = stages.indexOf(comp.status);
+
+                    return (
+                      <Card key={comp.id} className="overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <Badge variant="outline" className="capitalize mb-1">{comp.category}</Badge>
+                              <p className="text-xs text-muted-foreground">{new Date(comp.created_at).toLocaleDateString()}</p>
+                            </div>
+                            {comp.points_rewarded > 0 && (
+                              <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                +{comp.points_rewarded} Pts
+                              </Badge>
+                            )}
+                          </div>
+
+                          <p className="text-sm font-medium line-clamp-2 mb-4">{comp.description}</p>
+
+                          {/* Progress Timeline */}
+                          <div className="relative mb-4 px-2">
+                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2" />
+                            <div
+                              className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 transition-all duration-500"
+                              style={{ width: `${Math.max(0, currentIndex) / (stages.length - 1) * 100}%` }}
+                            />
+                            <div className="relative flex justify-between">
+                              {stages.map((stage, idx) => (
+                                <div key={stage} className="flex flex-col items-center group">
+                                  <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 transition-colors ${idx <= currentIndex ? "bg-primary border-primary" : "bg-background border-muted"
+                                    }`} />
+                                  <span className={`absolute -bottom-5 text-[9px] font-bold uppercase tracking-tighter transition-colors ${idx <= currentIndex ? "text-primary" : "text-muted-foreground"
+                                    }`}>
+                                    {stage.slice(0, 3)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {comp.admin_feedback && (
+                            <div className="mt-6 p-3 bg-muted/50 rounded-lg text-xs">
+                              <span className="font-semibold block mb-1">Feedback:</span>
+                              <span className="text-muted-foreground">{comp.admin_feedback}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Wind className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <p className="text-muted-foreground">No complaints filed yet.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </Layout>
+
   );
 };
 

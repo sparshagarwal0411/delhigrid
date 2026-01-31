@@ -144,14 +144,14 @@ const MARKETPLACE_ITEMS: MarketplaceItem[] = [
 ];
 
 const Marketplace = () => {
-    const [userScore, setUserScore] = useState<number | null>(null);
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [redeeming, setRedeeming] = useState<string | null>(null);
     const navigate = useNavigate();
     const { toast } = useToast();
 
     useEffect(() => {
-        const fetchUserScore = async () => {
+        const fetchWalletBalance = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session) {
@@ -161,27 +161,27 @@ const Marketplace = () => {
 
                 const { data: profile, error } = await supabase
                     .from("users")
-                    .select("score")
+                    .select("wallet_balance")
                     .eq("id", session.user.id)
                     .single();
 
                 if (error) throw error;
-                setUserScore(profile?.score ?? 0);
+                setWalletBalance(profile?.wallet_balance ?? 0);
             } catch (error) {
-                console.error("Error fetching score:", error);
+                console.error("Error fetching wallet balance:", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchUserScore();
+        fetchWalletBalance();
     }, [navigate]);
 
     const handleRedeem = async (item: MarketplaceItem) => {
-        if (userScore === null || userScore < item.points) {
+        if (walletBalance === null || walletBalance < item.points) {
             toast({
                 title: "Insufficient Points",
-                description: `You need ${item.points - (userScore || 0)} more points to redeem this item.`,
+                description: `You need ${item.points - (walletBalance || 0)} more points to redeem this item.`,
                 variant: "destructive",
             });
             return;
@@ -192,16 +192,16 @@ const Marketplace = () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error("No session");
 
-            const newScore = userScore - item.points;
+            const newBalance = walletBalance - item.points;
 
             const { error } = await (supabase
                 .from("users") as any)
-                .update({ score: newScore })
+                .update({ wallet_balance: newBalance })
                 .eq("id", session.user.id);
 
             if (error) throw error;
 
-            setUserScore(newScore);
+            setWalletBalance(newBalance);
             toast({
                 title: "Redemption Successful!",
                 description: `You have successfully redeemed ${item.title}. You will receive a confirmation email soon.`,
@@ -245,7 +245,7 @@ const Marketplace = () => {
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Your Balance</p>
-                                <p className="text-2xl font-bold text-primary">{userScore?.toLocaleString()} Points</p>
+                                <p className="text-2xl font-bold text-primary">{walletBalance?.toLocaleString()} Points</p>
                             </div>
                         </CardHeader>
                     </Card>
@@ -254,7 +254,7 @@ const Marketplace = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {MARKETPLACE_ITEMS.map((item) => {
                         const Icon = item.icon;
-                        const canAfford = (userScore || 0) >= item.points;
+                        const canAfford = (walletBalance || 0) >= item.points;
 
                         return (
                             <Card key={item.id} className="group relative flex flex-col overflow-hidden hover:shadow-xl transition-all duration-300 border-border/60">
