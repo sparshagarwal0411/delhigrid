@@ -33,6 +33,9 @@ import {
   Sparkles,
   ClipboardList,
   CheckCircle2,
+  ChevronRight,
+  Lock,
+  LogIn
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -221,13 +224,26 @@ const ComplaintsPage = () => {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        toast({ title: "Sign in required", description: "Please log in to file complaints.", variant: "destructive" });
-        navigate("/auth");
-        return;
+      // 1. Fetch Community Complaints (Public)
+      const { data: commComplaints } = await supabase
+        .from("complaints")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (commComplaints) {
+        setCommunityComplaints(commComplaints);
       }
 
+      // 2. Check Session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        setLoading(false);
+        return; // Allow guest access
+      }
+
+      // 3. Fetch Profile
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("id, ward_number, role")
@@ -235,8 +251,7 @@ const ComplaintsPage = () => {
         .single();
 
       if (profileError || !profile) {
-        toast({ title: "Profile error", description: "Could not load your profile.", variant: "destructive" });
-        navigate("/auth");
+        setLoading(false);
         return;
       }
 
@@ -250,7 +265,7 @@ const ComplaintsPage = () => {
       setUserData(profile as unknown as UserData);
       setLoading(false);
 
-      // Fetch complaints
+      // 4. Fetch User Complaints (Private)
       setLoadingComplaints(true);
       const { data: complaints, error: complaintsError } = await supabase
         .from("complaints")
@@ -262,18 +277,6 @@ const ComplaintsPage = () => {
         setUserComplaints(complaints);
       }
       setLoadingComplaints(false);
-
-      // Fetch community complaints
-      const { data: commComplaints } = await supabase
-        .from("complaints")
-        .select("*")
-        // .eq("ward_number", profile.ward_number) // Optional: filter by ward
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (commComplaints) {
-        setCommunityComplaints(commComplaints);
-      }
     };
 
     init();
@@ -302,7 +305,7 @@ const ComplaintsPage = () => {
     );
   }
 
-  if (!userData) return null;
+  // if (!userData) return null; // Logic removed to allow public rendering
 
   const catConfig = analysis ? CATEGORY_CONFIG[analysis.category] : null;
   const CatIcon = catConfig?.icon ?? Wind;
@@ -337,222 +340,242 @@ const ComplaintsPage = () => {
           </p>
         </motion.div>
 
-        {!geminiOk && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Alert variant="destructive" className="mb-6 shadow-sm">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Add <code className="text-xs bg-destructive/20 px-1 rounded">VITE_GEMINI_API_KEY</code> to your <code className="text-xs bg-destructive/20 px-1 rounded">.env</code> for AI analysis.
-              </AlertDescription>
-            </Alert>
-          </motion.div>
-        )}
-
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <Card className="overflow-hidden border-2 shadow-xl shadow-black/5 dark:shadow-none">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-            <CardHeader className="relative pb-4">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Report an issue
-              </CardTitle>
-              <CardDescription>
-                Be specific. Include location for accurate ward assignment.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative space-y-5">
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="complaint-location" className="text-sm font-medium">Location</Label>
-                <Input
-                  id="complaint-location"
-                  placeholder="e.g. Rohini Sector 5, near Connaught Place..."
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="h-11 bg-background/60 border-2 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="complaint-desc" className="text-sm font-medium">Problem description</Label>
-                <Textarea
-                  id="complaint-desc"
-                  placeholder="e.g. Garbage is being dumped on the street near Block A. Strong smell and flies..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  className="resize-none bg-background/60 border-2 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.25 }}
-                className="space-y-2"
-              >
-                <Label className="text-sm font-medium">Photo (optional)</Label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[140px] border-2 border-dashed rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 group">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoChange}
-                  />
-                  {photoPreview ? (
-                    <div className="relative w-full h-full min-h-[140px] rounded-xl overflow-hidden group">
-                      <img
-                        src={photoPreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
-                      />
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="h-9 w-9 rounded-full shadow-lg"
-                          onClick={(e) => { e.preventDefault(); removePhoto(); }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </motion.div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground group-hover:text-foreground transition-colors">
-                      <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                        <ImagePlus className="h-7 w-7" />
-                      </div>
-                      <span className="text-sm font-medium">Click to upload or drag & drop</span>
-                      <span className="text-xs">JPG, PNG or WebP</span>
-                    </div>
-                  )}
-                </label>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Button
-                  size="lg"
-                  className="w-full h-12 text-base font-semibold gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
-                  onClick={handleAnalyze}
-                  disabled={analyzing || (!analysis && !description.trim() && !photo) || !geminiOk}
-                >
-                  {analyzing ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Analyzing with AI...
-                    </>
-                  ) : analysis ? (
-                    <>
-                      <Bot className="h-5 w-5" />
-                      View suggestion again
-                    </>
-                  ) : (
-                    <>
-                      <Bot className="h-5 w-5" />
-                      Get AI suggestion
-                    </>
-                  )}
-                </Button>
-              </motion.div>
+        {/* Public Access Restriction for Reporting */}
+        {!userData ? (
+          <Card className="border-dashed border-2 bg-muted/30">
+            <CardContent className="flex flex-col items-center text-center py-10 space-y-4">
+              <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center">
+                <Lock className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="max-w-md space-y-1">
+                <h3 className="text-lg font-semibold">Login to Report</h3>
+                <p className="text-muted-foreground text-sm">You need to be logged in to file a new complaint. You can still view community issues in the side panel.</p>
+              </div>
+              <Button onClick={() => navigate("/auth")} className="gap-2">
+                <LogIn className="h-4 w-4" />
+                Sign In / Register
+              </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        ) : (
+          <>
+            {!geminiOk && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Alert variant="destructive" className="mb-6 shadow-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Add <code className="text-xs bg-destructive/20 px-1 rounded">VITE_GEMINI_API_KEY</code> to your <code className="text-xs bg-destructive/20 px-1 rounded">.env</code> for AI analysis.
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
 
-        {/* Suggestion Popup Dialog */}
-        <Dialog open={suggestionOpen && !!analysis} onOpenChange={(open) => !open && handleCloseSuggestion()}>
-          <DialogContent className="sm:max-w-md overflow-hidden p-0 gap-0 border-2">
-            <AnimatePresence>
-              {analysis && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-6"
-                >
-                  <DialogHeader className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <DialogTitle className="text-lg">AI Suggestion</DialogTitle>
-                        <DialogDescription>Review and take action</DialogDescription>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <Badge className={catConfig?.color}>
-                        <CatIcon className="h-3 w-3 mr-1" />
-                        {catConfig?.label}
-                      </Badge>
-                      <Badge variant="outline" className="gap-1">
-                        <MapPin className="h-3 w-3" />
-                        Ward {analysis.wardId}: {analysis.wardName}
-                      </Badge>
-                    </div>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {analysis.suggestion}
-                    </p>
-                  </div>
-                  <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
-                    <Button variant="outline" className="w-full sm:w-auto" onClick={handleStartOver}>
-                      Start over
-                    </Button>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <Card className="overflow-hidden border-2 shadow-xl shadow-black/5 dark:shadow-none">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
+                <CardHeader className="relative pb-4">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    Report an issue
+                  </CardTitle>
+                  <CardDescription>
+                    Be specific. Include location for accurate ward assignment.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="relative space-y-5">
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="space-y-2"
+                  >
+                    <Label htmlFor="complaint-location" className="text-sm font-medium">Location</Label>
+                    <Input
+                      id="complaint-location"
+                      placeholder="e.g. Rohini Sector 5, near Connaught Place..."
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="h-11 bg-background/60 border-2 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-2"
+                  >
+                    <Label htmlFor="complaint-desc" className="text-sm font-medium">Problem description</Label>
+                    <Textarea
+                      id="complaint-desc"
+                      placeholder="e.g. Garbage is being dumped on the street near Block A. Strong smell and flies..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                      className="resize-none bg-background/60 border-2 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">Photo (optional)</Label>
+                    <label className="flex flex-col items-center justify-center w-full min-h-[140px] border-2 border-dashed rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 group">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoChange}
+                      />
+                      {photoPreview ? (
+                        <div className="relative w-full h-full min-h-[140px] rounded-xl overflow-hidden group">
+                          <img
+                            src={photoPreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
+                          />
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                          >
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="h-9 w-9 rounded-full shadow-lg"
+                              onClick={(e) => { e.preventDefault(); removePhoto(); }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </motion.div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground group-hover:text-foreground transition-colors">
+                          <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                            <ImagePlus className="h-7 w-7" />
+                          </div>
+                          <span className="text-sm font-medium">Click to upload or drag & drop</span>
+                          <span className="text-xs">JPG, PNG or WebP</span>
+                        </div>
+                      )}
+                    </label>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
                     <Button
-                      className="w-full sm:w-auto gap-2"
-                      onClick={handleReportComplaint}
-                      disabled={reporting || !description.trim()}
+                      size="lg"
+                      className="w-full h-12 text-base font-semibold gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
+                      onClick={handleAnalyze}
+                      disabled={analyzing || (!analysis && !description.trim() && !photo) || !geminiOk}
                     >
-                      {reporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      Report complaint
+                      {analyzing ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Analyzing with AI...
+                        </>
+                      ) : analysis ? (
+                        <>
+                          <Bot className="h-5 w-5" />
+                          View suggestion again
+                        </>
+                      ) : (
+                        <>
+                          <Bot className="h-5 w-5" />
+                          Get AI suggestion
+                        </>
+                      )}
                     </Button>
-                  </DialogFooter>
-                  <p className="text-xs text-muted-foreground mt-4 pt-2 border-t">
-                    Use &quot;Report complaint&quot; when the AI suggestion doesn&apos;t help — your complaint will be sent to authorities.
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </DialogContent>
-        </Dialog>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Suggestion Popup Dialog */}
+            <Dialog open={suggestionOpen && !!analysis} onOpenChange={(open) => !open && handleCloseSuggestion()}>
+              <DialogContent className="sm:max-w-md overflow-hidden p-0 gap-0 border-2">
+                <AnimatePresence>
+                  {analysis && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="p-6"
+                    >
+                      <DialogHeader className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Bot className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <DialogTitle className="text-lg">AI Suggestion</DialogTitle>
+                            <DialogDescription>Review and take action</DialogDescription>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <Badge className={catConfig?.color}>
+                            <CatIcon className="h-3 w-3 mr-1" />
+                            {catConfig?.label}
+                          </Badge>
+                          <Badge variant="outline" className="gap-1">
+                            <MapPin className="h-3 w-3" />
+                            Ward {analysis.wardId}: {analysis.wardName}
+                          </Badge>
+                        </div>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {analysis.suggestion}
+                        </p>
+                      </div>
+                      <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={handleStartOver}>
+                          Start over
+                        </Button>
+                        <Button
+                          className="w-full sm:w-auto gap-2"
+                          onClick={handleReportComplaint}
+                          disabled={reporting || !description.trim()}
+                        >
+                          {reporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                          Report complaint
+                        </Button>
+                      </DialogFooter>
+                      <p className="text-xs text-muted-foreground mt-4 pt-2 border-t">
+                        Use &quot;Report complaint&quot; when the AI suggestion doesn&apos;t help — your complaint will be sent to authorities.
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
       </div>
 
-      {/* Floating Action Button for Tracker */}
+      {/* Side Handle for Sidebar */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.5 }}
-        className="fixed bottom-6 left-6 z-50"
+        initial={{ x: -10 }}
+        animate={{ x: 0 }}
+        className="fixed left-0 top-32 z-40"
       >
         <Button
           onClick={() => setSidebarOpen(true)}
-          size="lg"
-          className="h-14 w-14 rounded-full shadow-xl shadow-primary/30 flex items-center justify-center p-0 hover:scale-105 transition-transform"
+          variant="secondary"
+          className="h-16 w-6 rounded-l-none rounded-r-xl border border-l-0 shadow-md p-0 flex items-center justify-center hover:w-10 transition-all group bg-background"
         >
-          <Sparkles className="h-6 w-6" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
         </Button>
       </motion.div>
 
@@ -574,7 +597,7 @@ const ComplaintsPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 z-50 w-full sm:w-[400px] bg-background border-r shadow-2xl flex flex-col"
+              className="fixed top-16 bottom-0 left-0 z-50 w-full sm:w-[400px] bg-background border-r shadow-2xl flex flex-col pt-0"
             >
               <div className="p-4 border-b flex items-center justify-between bg-muted/30">
                 <div className="flex items-center gap-2">
@@ -589,7 +612,7 @@ const ComplaintsPage = () => {
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col">
-                <Tabs defaultValue="my" className="flex-1 flex flex-col">
+                <Tabs defaultValue={userData ? "my" : "community"} className="flex-1 flex flex-col">
                   <div className="px-4 pt-4">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="my">My Complaints</TabsTrigger>
@@ -597,7 +620,17 @@ const ComplaintsPage = () => {
                     </TabsList>
                   </div>
 
-                  <TabsContent value="my" className="flex-1 flex flex-col m-0 overflow-hidden">
+                  <TabsContent value="my" className="flex-1 flex flex-col m-0 overflow-hidden relative">
+                    {!userData && (
+                      <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-[2px] flex items-center justify-center p-6">
+                        <div className="bg-background border shadow-lg rounded-xl p-6 text-center max-w-xs">
+                          <Lock className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                          <h3 className="font-semibold mb-1">Login Required</h3>
+                          <p className="text-xs text-muted-foreground mb-4">Sign in to track your personal complaints and earn rewards.</p>
+                          <Button size="sm" onClick={() => navigate("/auth")} className="w-full">Login</Button>
+                        </div>
+                      </div>
+                    )}
                     <Tabs defaultValue="active" className="flex-1 flex flex-col">
                       <div className="px-4 py-2 border-b">
                         <TabsList className="grid w-full grid-cols-2 h-8">
@@ -765,7 +798,7 @@ const ComplaintsPage = () => {
           </>
         )}
       </AnimatePresence>
-    </Layout>
+    </Layout >
 
   );
 };

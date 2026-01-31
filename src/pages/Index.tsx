@@ -31,107 +31,6 @@ import {
   Target
 } from "lucide-react";
 
-// --- REVAMPED CLEAN LEAF ANIMATION ---
-const AnimatedTitle = () => {
-  const text = "Delhi Grid";
-  const letters = text.split("");
-  
-  // 50 Leaves for the "Flurry"
-  const leaves = Array.from({ length: 50 }).map((_, i) => ({
-    id: i,
-    // Staggered delays: 0s to 1.5s
-    delay: Math.random() * 1.5,
-    // Random "spread" from the center line of the swarm
-    ySpread: Math.random() * 60 - 30, 
-    xSpread: Math.random() * 40 - 20,
-    // Random sizes
-    scale: 0.5 + Math.random() * 0.5,
-    // Random rotation speed
-    spinDuration: 1 + Math.random() * 2,
-    // Color Palette
-    color: [
-      "text-green-400", "text-green-500", "text-emerald-400", "text-lime-500"
-    ][Math.floor(Math.random() * 4)]
-  }));
-
-  return (
-    <div className="relative flex items-center justify-center h-32 w-full max-w-4xl mx-auto overflow-visible perspective-1000">
-      <style>{`
-        /* 1. FLURRY PATH: Bottom-Left to Top-Right */
-        @keyframes swarm-fly {
-          0% {
-            opacity: 0;
-            transform: translate(-300px, 150px) scale(0.5); /* Start Bottom Left */
-          }
-          10% { opacity: 1; }
-          80% { opacity: 1; }
-          100% {
-            opacity: 0;
-            transform: translate(300px, -150px) scale(0); /* End Top Right */
-          }
-        }
-
-        /* 2. SPIRAL EFFECT: Makes leaves go round */
-        @keyframes leaf-spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        /* 3. TEXT REVEAL: Strictly invisible at start */
-        @keyframes text-uncover {
-          0% { opacity: 0; filter: blur(8px); transform: translateY(10px); }
-          100% { opacity: 1; filter: blur(0); transform: translateY(0); }
-        }
-      `}</style>
-
-      {/* TEXT CONTAINER */}
-      <h1 className="relative z-10 text-5xl md:text-6xl lg:text-7xl font-heading font-bold text-primary-foreground leading-tight drop-shadow-2xl flex gap-1 md:gap-2">
-        {letters.map((char, i) => (
-          <span 
-            key={i} 
-            className="opacity-0" // Hardcoded invisible start
-            style={{ 
-              animation: 'text-uncover 0.8s ease-out forwards',
-              // Timing: Wait for the swarm to reach this letter position
-              // 0.2s initial buffer + index * speed
-              animationDelay: `${0.2 + (i * 0.15)}s` 
-            }}
-          >
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
-      </h1>
-
-      {/* LEAF SWARM CONTAINER (Absolute Overlay) */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
-        {leaves.map((leaf) => (
-          <div
-            key={leaf.id}
-            className={`absolute ${leaf.color}`}
-            style={{
-              // Apply the diagonal flight path
-              animation: `swarm-fly 2.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
-              animationDelay: `${leaf.delay}s`,
-              // Apply random offset so they aren't in a straight line
-              marginLeft: `${leaf.xSpread}px`,
-              marginTop: `${leaf.ySpread}px`,
-            }}
-          >
-            {/* Inner rotation for the leaf itself */}
-            <Leaf 
-              className="w-5 h-5 md:w-8 md:h-8 drop-shadow-md" 
-              fill="currentColor"
-              style={{
-                animation: `leaf-spin ${leaf.spinDuration}s linear infinite`
-              }}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const Index = () => {
   return (
     <Layout>
@@ -161,8 +60,12 @@ const Index = () => {
               Government of NCT of Delhi Initiative
             </Badge>
 
-            {/* NEW ANIMATED COMPONENT */}
-            <AnimatedTitle />
+            {/* Static Clean Title */}
+            <div className="min-h-[100px] flex items-center justify-center">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-heading font-bold text-primary-foreground leading-tight drop-shadow-2xl">
+                Delhi Grid
+              </h1>
+            </div>
 
             <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl mx-auto font-body font-medium drop-shadow-sm">
               Empowering Delhi's 250 wards with real-time pollution data, education, and actionable steps for cleaner communities.
@@ -180,7 +83,7 @@ const Index = () => {
                 </Button>
               </Link>
               <Link to="/auth">
-                <Button variant="hero-outline" size="xl" className="gap-2 hover:scale-105 transition-transform">
+                <Button variant="hero" size="xl" className="gap-2 shadow-xl shadow-green-900/20 hover:scale-105 transition-transform">
                   Join as Citizen
                   <ArrowRight className="h-5 w-5" />
                 </Button>
@@ -311,7 +214,8 @@ const Index = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center space-y-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
+              {/* Change 2: Bubble 1 white by default, blue on hover */}
+              <div className="mx-auto h-16 w-16 rounded-full bg-white text-black flex items-center justify-center text-2xl font-bold transition-colors hover:bg-primary hover:text-white cursor-default">
                 1
               </div>
               <h3 className="font-heading text-xl font-semibold">Find Your Ward</h3>
@@ -321,7 +225,8 @@ const Index = () => {
             </div>
 
             <div className="text-center space-y-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-2xl font-bold">
+              {/* Change 2: Bubble 2 white by default, blue on hover */}
+              <div className="mx-auto h-16 w-16 rounded-full bg-white text-black flex items-center justify-center text-2xl font-bold transition-colors hover:bg-primary hover:text-white cursor-default">
                 2
               </div>
               <h3 className="font-heading text-xl font-semibold">Understand the Data</h3>
@@ -331,7 +236,8 @@ const Index = () => {
             </div>
 
             <div className="text-center space-y-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-success text-success-foreground flex items-center justify-center text-2xl font-bold">
+              {/* Change 2: Bubble 3 white by default, blue on hover */}
+              <div className="mx-auto h-16 w-16 rounded-full bg-white text-black flex items-center justify-center text-2xl font-bold transition-colors hover:bg-primary hover:text-white cursor-default">
                 3
               </div>
               <h3 className="font-heading text-xl font-semibold">Take Action</h3>
@@ -356,7 +262,7 @@ const Index = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader>
                 <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                   <HeartHandshake className="h-6 w-6 text-primary" />
@@ -366,14 +272,14 @@ const Index = () => {
                   Support ward-level initiatives financially
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="mt-auto w-full pb-6">
                 <Link to="/contribute">
-                  <Button variant="civic" className="w-full">Donate Now</Button>
+                  <Button variant="civic-outline" className="w-full">Donate Now</Button>
                 </Link>
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader>
                 <div className="mx-auto h-12 w-12 rounded-full bg-success/10 flex items-center justify-center mb-2">
                   <Users className="h-6 w-6 text-success" />
@@ -383,14 +289,14 @@ const Index = () => {
                   Participate in clean-up drives and awareness campaigns
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="mt-auto w-full pb-6">
                 <Link to="/volunteer">
                   <Button variant="civic-outline" className="w-full">Register</Button>
                 </Link>
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader>
                 <div className="mx-auto h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center mb-2">
                   <Building2 className="h-6 w-6 text-warning" />
@@ -400,14 +306,14 @@ const Index = () => {
                   Partner with us for on-ground implementation
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="mt-auto w-full pb-6">
                 <Link to="/ngo">
                   <Button variant="civic-outline" className="w-full">Apply</Button>
                 </Link>
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow">
+            <Card className="text-center hover:shadow-lg transition-shadow h-full flex flex-col">
               <CardHeader>
                 <div className="mx-auto h-12 w-12 rounded-full bg-info/10 flex items-center justify-center mb-2">
                   <Shield className="h-6 w-6 text-info" />
@@ -417,7 +323,7 @@ const Index = () => {
                   Corporate partnerships for sustainable impact
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="mt-auto w-full pb-6">
                 <Link to="/partnership">
                   <Button variant="civic-outline" className="w-full">Learn More</Button>
                 </Link>
@@ -460,7 +366,8 @@ const Index = () => {
                 </li>
               </ul>
               <Link to="/citizen">
-                <Button variant="civic" size="lg" className="w-full gap-2">
+                {/* Change 1: variant changed to civic-outline for hover effect */}
+                <Button variant="civic-outline" size="lg" className="w-full gap-2">
                   Access Citizen Dashboard
                   <ArrowRight className="h-5 w-5" />
                 </Button>
@@ -496,7 +403,8 @@ const Index = () => {
                 </li>
               </ul>
               <Link to="/authority">
-                <Button variant="civic-secondary" size="lg" className="w-full gap-2">
+                {/* Change 1: variant changed to civic-outline for hover effect */}
+                <Button variant="civic-outline" size="lg" className="w-full gap-2">
                   Access Authority Portal
                   <ArrowRight className="h-5 w-5" />
                 </Button>
@@ -696,7 +604,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing/Billing Section */}
+      {/* Pricing/Billing Section - Fixed Alignment */}
       <section id="pricing" className="py-16 bg-muted/30 scroll-mt-16">
         <div className="container">
           <div className="text-center mb-12">
@@ -714,7 +622,7 @@ const Index = () => {
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
             {/* Free Plan */}
-            <Card variant="civic" className="relative">
+            <Card variant="civic" className="relative h-full flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
                   <CardTitle className="text-2xl">Citizen</CardTitle>
@@ -722,12 +630,12 @@ const Index = () => {
                 </div>
                 <CardDescription>Perfect for individual citizens</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1">
                 <div>
                   <div className="text-3xl font-bold">₹0</div>
                   <div className="text-sm text-muted-foreground">Forever free</div>
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-3 mb-4">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
                     <span className="text-sm">Access to all ward pollution data</span>
@@ -749,14 +657,16 @@ const Index = () => {
                     <span className="text-sm">Report pollution incidents</span>
                   </li>
                 </ul>
-                <Link to="/auth">
-                  <Button variant="civic" className="w-full">Get Started Free</Button>
-                </Link>
               </CardContent>
+              <div className="p-6 pt-0 mt-auto">
+                <Link to="/auth">
+                  <Button variant="civic-outline" className="w-full">Get Started Free</Button>
+                </Link>
+              </div>
             </Card>
 
             {/* Premium Plan */}
-            <Card variant="civic" className="relative border-2 border-primary">
+            <Card variant="civic" className="relative border-2 border-primary h-full flex flex-col">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
               </div>
@@ -767,12 +677,12 @@ const Index = () => {
                 </div>
                 <CardDescription>For engaged citizens & small groups</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1">
                 <div>
                   <div className="text-3xl font-bold">₹99</div>
                   <div className="text-sm text-muted-foreground">per month or ₹999/year</div>
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-3 mb-4">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
                     <span className="text-sm">Everything in Citizen plan</span>
@@ -798,14 +708,16 @@ const Index = () => {
                     <span className="text-sm">Ad-free experience</span>
                   </li>
                 </ul>
-                <Link to="/payment">
-                  <Button variant="civic" className="w-full">Upgrade to Premium</Button>
-                </Link>
               </CardContent>
+              <div className="p-6 pt-0 mt-auto">
+                <Link to="/payment">
+                  <Button variant="civic-outline" className="w-full">Upgrade to Premium</Button>
+                </Link>
+              </div>
             </Card>
 
             {/* Organization Plan */}
-            <Card variant="civic" className="relative">
+            <Card variant="civic" className="relative h-full flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
                   <CardTitle className="text-2xl">Organization</CardTitle>
@@ -813,12 +725,12 @@ const Index = () => {
                 </div>
                 <CardDescription>For NGOs & community groups</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1">
                 <div>
                   <div className="text-3xl font-bold">₹499</div>
                   <div className="text-sm text-muted-foreground">per month (starting)</div>
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-3 mb-4">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
                     <span className="text-sm">Everything in Premium</span>
@@ -844,10 +756,12 @@ const Index = () => {
                     <span className="text-sm">API access for integration</span>
                   </li>
                 </ul>
+              </CardContent>
+              <div className="p-6 pt-0 mt-auto">
                 <Link to="/partnership">
                   <Button variant="civic-outline" className="w-full">Contact Sales</Button>
                 </Link>
-              </CardContent>
+              </div>
             </Card>
           </div>
 
