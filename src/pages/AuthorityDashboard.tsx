@@ -27,7 +27,10 @@ import {
   Eye,
   Loader2,
   RefreshCw,
-  Target
+  Target,
+  MessageSquare,
+  Clock,
+  ClipboardList
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -54,6 +57,26 @@ interface PendingSubmission {
     score: number;
   };
 }
+
+interface Complaint {
+  id: string;
+  user_id: string;
+  ward_number: number;
+  description: string;
+  photo_url: string | null;
+  category: string;
+  status: string;
+  admin_feedback: string | null;
+  points_rewarded: number;
+  timeline: any[];
+  created_at: string;
+  users?: {
+    first_name: string;
+    last_name: string;
+    score: number;
+  }
+}
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 
 // Generate chart data
@@ -99,10 +122,14 @@ const AuthorityDashboard = () => {
   const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
   const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [totalActionsCount, setTotalActionsCount] = useState(0);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingComplaints, setLoadingComplaints] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [rawCount, setRawCount] = useState<number | null>(null);
   const [customScores, setCustomScores] = useState<Record<string, number>>({});
+  const [complaintFeedback, setComplaintFeedback] = useState<Record<string, string>>({});
+  const [complaintPoints, setComplaintPoints] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const fetchStats = async () => {
@@ -187,14 +214,58 @@ const AuthorityDashboard = () => {
     }
   };
 
+  const fetchComplaints = async () => {
+    setLoadingComplaints(true);
+    try {
+      const { data: compData, error: compError } = await (supabase
+        .from("complaints") as any)
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (compError) throw compError;
+
+      const userIds = [...new Set(((compData as any[]).map(c => c.user_id)) as string[])];
+      const { data: usersData } = await supabase
+        .from("users")
+        .select("*")
+        .in("id", userIds);
+
+      const joinedComplaints = (compData as any[]).map(c => {
+        const user = (usersData as any[] | null)?.find(u => u.id === c.user_id);
+        return {
+          ...c,
+          users: user || null
+        };
+      });
+
+      setComplaints(joinedComplaints);
+
+      // Initialize feedback and points state
+      const feedback: Record<string, string> = {};
+      const points: Record<string, number> = {};
+      joinedComplaints.forEach(c => {
+        feedback[c.id] = c.admin_feedback || "";
+        points[c.id] = c.points_rewarded || 0;
+      });
+      setComplaintFeedback(feedback);
+      setComplaintPoints(points);
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+    } finally {
+      setLoadingComplaints(false);
+    }
+  };
+
   const handleRefresh = () => {
     fetchStats();
     fetchPendingSubmissions();
+    fetchComplaints();
   };
 
   useEffect(() => {
     fetchStats();
     fetchPendingSubmissions();
+    fetchComplaints();
   }, []);
 
   const handleApprove = async (submission: PendingSubmission) => {
@@ -262,6 +333,58 @@ const AuthorityDashboard = () => {
         description: `Failed to reject action: ${error.message || "Unknown error"}`,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleUpdateComplaint = async (complaintId: string, newStatus: string) => {
+    try {
+      setLoadingComplaints(true);
+      const feedback = complaintFeedback[complaintId];
+      const points = complaintPoints[complaintId];
+      const complaint = complaints.find(c => c.id === complaintId);
+
+      const { error: compError } = await (supabase
+        .from("complaints") as any)
+        .update({
+          status: newStatus,
+          admin_feedback: feedback,
+          points_rewarded: points
+        })
+        .eq("id", complaintId);
+
+      if (compError) throw compError;
+
+      // Update user score if points are newly awarded or increased
+      if (points > (complaint?.points_rewarded || 0) && complaint?.users) {
+        const addedPoints = points - (complaint.points_rewarded || 0);
+        const { data: userProfile } = await supabase
+          .from("users")
+          .select("score")
+          .eq("id", complaint.user_id)
+          .single();
+
+        const newScore = ((userProfile as any)?.score || 0) + addedPoints;
+        await (supabase
+          .from("users") as any)
+          .update({ score: newScore })
+          .eq("id", complaint.user_id);
+      }
+
+      toast({
+        title: "Complaint Updated",
+        description: `Status changed to ${newStatus}. Feedback and points saved.`,
+      });
+
+      await fetchComplaints();
+    } catch (error: any) {
+      console.error("Error updating complaint:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingComplaints(false);
     }
   };
 
@@ -362,7 +485,17 @@ const AuthorityDashboard = () => {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="complaints" className="gap-2">
+                <ClipboardList className="h-4 w-4" />
+                Complaints
+                {complaints.filter(c => c.status === 'received').length > 0 && (
+                  <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px] ml-2">
+                    {complaints.filter(c => c.status === 'received').length}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
+
 
             <div className="flex gap-2">
               <Select defaultValue="30">
@@ -858,7 +991,152 @@ const AuthorityDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Complaints Tab */}
+          <TabsContent value="complaints" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <ClipboardList className="h-5 w-5 text-primary" />
+                      Complaint Management
+                    </CardTitle>
+                    <CardDescription>View reported problems, update timeline, and reward citizens</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loadingComplaints}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingComplaints ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingComplaints ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <p className="text-muted-foreground">Loading complaints...</p>
+                  </div>
+                ) : complaints.length > 0 ? (
+                  <div className="grid gap-6">
+                    {complaints.map((comp) => (
+                      <Card key={comp.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all">
+                        <div className="flex flex-col md:flex-row">
+                          {comp.photo_url && (
+                            <div className="md:w-64 h-48 md:h-auto bg-muted">
+                              <img
+                                src={comp.photo_url}
+                                alt="Complaint"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex flex-wrap gap-2">
+                                <Badge variant="outline">{comp.category}</Badge>
+                                <Badge variant="secondary" className="gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  Ward {comp.ward_number}
+                                </Badge>
+                                <Badge className={
+                                  comp.status === 'solved' ? "bg-success" :
+                                    comp.status === 'working' ? "bg-warning" :
+                                      comp.status === 'reported' ? "bg-info" : "bg-primary"
+                                }>
+                                  {comp.status.toUpperCase()}
+                                </Badge>
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(comp.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+
+                            <h4 className="font-bold text-lg mb-2 capitalize">{comp.category} Issue</h4>
+                            <p className="text-sm text-muted-foreground mb-4">{comp.description}</p>
+
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+                              <Users className="h-3 w-3" />
+                              By {comp.users ? `${comp.users.first_name} ${comp.users.last_name}` : `User ${comp.user_id.substring(0, 8)}`}
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-6 items-end pt-4 border-t">
+                              <div className="space-y-3">
+                                <Label className="text-sm font-medium">Internal Feedback / Notes</Label>
+                                <textarea
+                                  className="w-full min-h-[80px] p-3 rounded-md border text-sm bg-background resize-none"
+                                  placeholder="Provide feedback to the citizen..."
+                                  value={complaintFeedback[comp.id] || ""}
+                                  onChange={(e) => setComplaintFeedback({
+                                    ...complaintFeedback,
+                                    [comp.id]: e.target.value
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="flex-1 space-y-1.5">
+                                    <Label className="text-xs">Reward Points</Label>
+                                    <Input
+                                      type="number"
+                                      className="h-9"
+                                      value={complaintPoints[comp.id] || 0}
+                                      onChange={(e) => setComplaintPoints({
+                                        ...complaintPoints,
+                                        [comp.id]: parseInt(e.target.value) || 0
+                                      })}
+                                    />
+                                  </div>
+                                  <div className="flex-1 space-y-1.5">
+                                    <Label className="text-xs">Update Status</Label>
+                                    <Select
+                                      value={comp.status}
+                                      onValueChange={(val) => handleUpdateComplaint(comp.id, val)}
+                                    >
+                                      <SelectTrigger className="h-9">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="received">Received</SelectItem>
+                                        <SelectItem value="reported">Reported</SelectItem>
+                                        <SelectItem value="working">Working</SelectItem>
+                                        <SelectItem value="solved">Solved</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <Button
+                                  className="w-full gap-2"
+                                  variant="outline"
+                                  onClick={() => handleUpdateComplaint(comp.id, comp.status)}
+                                >
+                                  <FileText className="h-4 w-4" />
+                                  Save Feedback & Points
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Timeline preview */}
+                            <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t border-dashed">
+                              <Clock className="h-3 w-3" />
+                              History: {comp.timeline?.length || 0} status changes recorded
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20 border-2 border-dashed rounded-xl">
+                    <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-1">No Complaints</h3>
+                    <p className="text-muted-foreground">No complaints have been reported yet.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
       </div>
     </Layout>
   );

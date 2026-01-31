@@ -178,7 +178,7 @@ const ComplaintsPage = () => {
         photo_url: photoUrl,
         category: analysis.category,
         ai_suggestion: analysis.suggestion,
-        status: "pending",
+        status: "received",
       });
 
       if (error) throw error;

@@ -6,7 +6,7 @@
 import { wards } from "@/data/wards";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"] as const;
+const GEMINI_MODELS = ["gemini-2.5-flash"] as const;
 
 export type ComplaintCategory =
   | "air"
