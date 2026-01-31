@@ -133,6 +133,7 @@ export type Database = {
           id: string
           user_id: string
           ward_number: number
+          location_text: string | null
           description: string
           photo_url: string | null
           category: 'air' | 'water' | 'noise' | 'transport' | 'soil' | 'land'
@@ -145,6 +146,7 @@ export type Database = {
           id?: string
           user_id: string
           ward_number: number
+          location_text?: string | null
           description: string
           photo_url?: string | null
           category: 'air' | 'water' | 'noise' | 'transport' | 'soil' | 'land'
@@ -157,6 +159,7 @@ export type Database = {
           id?: string
           user_id?: string
           ward_number?: number
+          location_text?: string | null
           description?: string
           photo_url?: string | null
           category?: 'air' | 'water' | 'noise' | 'transport' | 'soil' | 'land'

@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -61,6 +62,7 @@ const ComplaintsPage = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -112,7 +114,9 @@ const ComplaintsPage = () => {
       const result = await analyzeComplaint(
         trimmed || "See attached image for the environmental issue.",
         imageBase64,
-        imageMimeType
+        imageMimeType,
+        location.trim() || undefined,
+        userData?.ward_number
       );
       setAnalysis(result);
       toast({ title: "Analysis complete", description: "Review the suggestion below." });
@@ -149,9 +153,10 @@ const ComplaintsPage = () => {
         }
       }
 
-      const { error } = await supabase.from("complaints").insert({
+      const { error } = await (supabase.from("complaints") as any).insert({
         user_id: userData.id,
-        ward_number: userData.ward_number,
+        ward_number: analysis.wardId,
+        location_text: location.trim() ? location.trim() : null,
         description: trimmed,
         photo_url: photoUrl,
         category: analysis.category,
@@ -163,6 +168,7 @@ const ComplaintsPage = () => {
 
       toast({ title: "Complaint reported", description: "Authorities will review it shortly." });
       setDescription("");
+      setLocation("");
       removePhoto();
       setAnalysis(null);
     } catch (err) {
@@ -257,6 +263,16 @@ const ComplaintsPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="complaint-location">Location (address, landmark, area)</Label>
+              <Input
+                id="complaint-location"
+                placeholder="e.g. Rohini Sector 5, near Connaught Place, Block A Dwarka..."
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="bg-background/50"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="complaint-desc">Problem description</Label>
               <Textarea
                 id="complaint-desc"
@@ -328,13 +344,19 @@ const ComplaintsPage = () => {
         {analysis && (
           <Card className="mt-6 border-primary/30 bg-primary/5">
             <CardHeader>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Bot className="h-5 w-5 text-primary" />
                 <CardTitle className="text-lg">Suggestion by AI</CardTitle>
                 <Badge className={catConfig?.color}>
                   <CatIcon className="h-3 w-3 mr-1" />
                   {catConfig?.label}
                 </Badge>
+                {analysis && (
+                  <Badge variant="outline" className="gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Ward {analysis.wardId}: {analysis.wardName}
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -348,6 +370,7 @@ const ComplaintsPage = () => {
                   onClick={() => {
                     setAnalysis(null);
                     setDescription("");
+                    setLocation("");
                     removePhoto();
                   }}
                 >

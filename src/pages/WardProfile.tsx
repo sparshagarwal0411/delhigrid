@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,11 +24,23 @@ import {
   BookOpen,
   ExternalLink,
   RefreshCw,
-  Gauge
+  Gauge,
+  FileWarning,
+  MessageSquare
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { TrafficIndicator } from "@/components/TrafficIndicator";
 
+
+interface WardComplaint {
+  id: string;
+  description: string;
+  location_text: string | null;
+  category: string;
+  ai_suggestion: string | null;
+  status: string;
+  created_at: string;
+}
 
 const WardProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +48,7 @@ const WardProfile = () => {
   const ward = getWardById(wardId);
   const { wards, isLoading, refetch, isUsingRealData } = usePollutionData();
   const [wardWithAQI, setWardWithAQI] = useState<Ward | undefined>(ward);
+  const [complaints, setComplaints] = useState<WardComplaint[]>([]);
 
   useEffect(() => {
     // Reset scroll to top when ward changes
@@ -45,6 +59,19 @@ const WardProfile = () => {
       setWardWithAQI(updatedWard);
     }
   }, [wards, wardId]);
+
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      const { data } = await supabase
+        .from("complaints")
+        .select("id, description, location_text, category, ai_suggestion, status, created_at")
+        .eq("ward_number", wardId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setComplaints((data as WardComplaint[]) || []);
+    };
+    fetchComplaints();
+  }, [wardId]);
 
   if (!ward || !wardWithAQI) {
     return (
@@ -236,6 +263,71 @@ const WardProfile = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Citizen Complaints */}
+            <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileWarning className="h-5 w-5 text-destructive" />
+                    Complaints in this Ward ({complaints.length})
+                  </CardTitle>
+                  <CardDescription>Reported by citizens for this ward</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {complaints.length === 0 ? (
+                    <div className="py-6 text-center text-muted-foreground">
+                      <FileWarning className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No complaints reported for this ward yet.</p>
+                      <Link to="/complaints">
+                        <Button variant="outline" size="sm" className="mt-3 gap-2">
+                          File a Complaint
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                  <div className="space-y-4">
+                    {complaints.map((c) => (
+                      <div
+                        key={c.id}
+                        className="p-4 rounded-lg border bg-muted/30 space-y-2"
+                      >
+                        <p className="text-sm font-medium">{c.description}</p>
+                        {c.location_text && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> {c.location_text}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {c.category}
+                          </Badge>
+                          <Badge variant={c.status === "resolved" ? "default" : "secondary"}>
+                            {c.status.replace("_", " ")}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(c.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {c.ai_suggestion && (
+                          <div className="flex gap-2 pt-2 border-t text-xs">
+                            <MessageSquare className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                            <span className="text-muted-foreground italic">{c.ai_suggestion}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  )}
+                  {complaints.length > 0 && (
+                    <Link to="/complaints" className="mt-4 block">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <FileWarning className="h-4 w-4" />
+                        File a Complaint
+                      </Button>
+                    </Link>
+                  )}
+                </CardContent>
+              </Card>
 
             {/* Pollution Sources */}
             <Card>
